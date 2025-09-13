@@ -2,62 +2,173 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Video.js Player</title>
+  <title>Multi Video Player</title>
+  <!-- Video.js -->
   <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
   <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-quality-levels@3.0.0/dist/videojs-contrib-quality-levels.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/videojs-http-streaming@3.7.0/dist/videojs-http-streaming.min.js"></script>
+  
+  <!-- Clappr -->
+  <script src="https://cdn.jsdelivr.net/npm/clappr@latest/dist/clappr.min.js"></script>
+  
+  <!-- HLS.js -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 10px;
-      text-align: center;
-    }
-    #my-player {
-      max-width: 100%;
-      height: auto;
-    }
-    .video-js {
-      width: 100% !important;
-      height: auto !important;
-      aspect-ratio: 16 / 9; /* keeps correct proportions */
-    }
-  </style>
-</head>
-<body>
-  <div style="margin: 20px 0;">
-    <h1>Video Player</h1>
-    <input type="text" id="video-url" placeholder="Enter video URL (MP4 or M3U8)" style="width:60%; max-width:400px; padding:5px;" />
-    <button onclick="loadVideo()" style="padding:5px 20px;">Load Video</button>
-  </div>
+  body {
+    background-color: #121212;
+    color: #f0f0f0;
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    text-align: center;
+  }
 
-  <video
-    id="my-player"
-    class="video-js vjs-default-skin vjs-fluid"
-    controls
-    preload="auto"
-    data-setup='{"fluid": true}'
-  >
-    <source src="https://example.com/stream.m3u8" type="application/x-mpegURL" />
-  </video>
+  #playerselect select {
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    background-color: #1e1e1e;
+    color: #f0f0f0;
+    padding: 12px;
+  }
+
+  input, button {
+    border-radius: 8px;
+    border: none;
+    padding: 12px;
+    margin: 5px;
+    font-size: 14px;
+  }
+
+  button {
+    background-color: #0078d7;
+    color: #fff;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  button:hover {
+    background-color: #005ea3;
+  }
+
+  #player-container {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16/9;
+    margin: auto;
+  }
+  video, #clappr-player {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16/9;
+    margin: auto;
+  }
+  .video-js {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 16 / 9; /* keeps correct proportions */
+  }
+
+</style>
+
+<h2>Video Player</h2>
+
+<div id="playerselect" style="width:100%;max-width:800px;margin:auto;">
+  <select id="player-select">
+    <option value="clappr">Clappr</option>
+    <option value="hlsjs">HLS.js</option>
+    <option value="videojs">Video.js</option>
+    <option value="31cek.xyz">31cek.xyz</option>
+  </select>
+</div>
+
+<input type="text" id="video-url" placeholder="Enter video URL (MP4 or M3U8)" style="width:60%;max-width:400px;" />
+<button onclick="loadPlayer()">Load</button>
+
+<div id="player-container">
+  <div class="player-wrapper">
+    <!-- Video.js -->
+    <video id="videojs-player" class="video-js vjs-default-skin" controls preload="auto">
+      <source src="" type="application/x-mpegURL" />
+    </video>
+
+    <!-- Clappr -->
+    <div id="clappr-player" style="display:none;"></div>
+
+    <!-- HLS.js -->
+    <video id="hls-video" controls style="display:none;"></video>
+  </div>
+</div>
+
 
   <script>
-    var player = videojs('my-player');
+    var vjsPlayer = videojs("videojs-player");
+    var clapprPlayer = null;
+    var hlsInstance = null;
 
-    function loadVideo() {
+    function hideAll() {
+      document.getElementById("videojs-player").style.display = "none";
+      document.getElementById("clappr-player").style.display = "none";
+      document.getElementById("hls-video").style.display = "none";
+
+      // destroy existing players
+      if (clapprPlayer) { clapprPlayer.destroy(); clapprPlayer = null; }
+      if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+
+      // remove iframe if exists
+      var oldIframe = document.getElementById("player-iframe");
+      if (oldIframe) oldIframe.remove();
+    }
+
+    function loadPlayer() {
       var url = document.getElementById("video-url").value.trim();
       if (!url) return alert("Please enter a video URL.");
 
-      var type = "video/mp4";
-      if (url.endsWith(".m3u8")) {
-        type = "application/x-mpegURL";
-      } else if (url.endsWith(".mpd")) {
-        type = "application/dash+xml";
-      }
+      var selected = document.getElementById("player-select").value;
+      hideAll();
 
-      player.src({ src: url, type: type });
-      player.play();
+      if (selected === "videojs") {
+        document.getElementById("videojs-player").style.display = "block";
+        var type = url.endsWith(".m3u8") ? "application/x-mpegURL" :
+                  url.endsWith(".mpd") ? "application/dash+xml" : "video/mp4";
+        vjsPlayer.src({ src: url, type: type });
+        vjsPlayer.play();
+
+      } else if (selected === "clappr") {
+        document.getElementById("clappr-player").style.display = "block";
+        clapprPlayer = new Clappr.Player({
+          source: url,
+          parentId: "#clappr-player",
+          width: "100%",
+          height: "100%",
+          autoPlay: true
+        });
+
+      } else if (selected === "hlsjs") {
+        var video = document.getElementById("hls-video");
+        video.style.display = "block";
+        if (Hls.isSupported() && url.endsWith(".m3u8")) {
+          hlsInstance = new Hls();
+          hlsInstance.loadSource(url);
+          hlsInstance.attachMedia(video);
+          video.play();
+        } else {
+          video.src = url; // fallback for mp4
+          video.play();
+        }
+
+      } else if (selected === "31cek.xyz") {
+        // create iframe
+        var iframe = document.createElement("iframe");
+        iframe.src = "https://31cek.xyz/embed/kbj.php?url=" + encodeURIComponent(url);
+        iframe.style.width = "100%";
+        iframe.style.height = "auto";
+        iframe.style.aspectRatio = "16/9";
+        iframe.style.border = "none";
+        iframe.id = "player-iframe";
+        document.getElementById("player-container").appendChild(iframe);
+      }
     }
   </script>
 </body>
